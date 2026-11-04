@@ -47,6 +47,9 @@ public final class VesperaClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        // автообновление из GitHub Releases (фоновый поток, игру не задерживает)
+        dev.vespera.client.update.Updater.start();
+
         openGui = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.vespera.clickgui",
                 InputUtil.Type.KEYSYM,
@@ -99,6 +102,7 @@ public final class VesperaClient implements ClientModInitializer {
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             ModuleConfig.saveIfDirty();
             NvgRenderer.destroy();
+            dev.vespera.client.update.Updater.applyOnExit(); // подменить jar новым после выхода
         });
     }
 }

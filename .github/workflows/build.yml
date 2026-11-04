@@ -9,8 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -18,12 +18,16 @@ jobs:
         with:
           # та же версия, что собирает локально build.bat (Loom 1.13.4 на ней проверен)
           gradle-version: 9.2.1
-      - run: gradle build --no-daemon -x test
-      - run: cp $(ls build/libs/vespera-client-*.jar | grep -v -- '-sources') ./vespera-client.jar
+      - run: gradle build --no-daemon -x test -Pbuild_sha=${{ github.sha }}
+      - run: |
+          cp $(ls build/libs/vespera-client-*.jar | grep -v -- '-sources') ./vespera-client.jar
+          echo -n "${{ github.sha }}" > build.txt
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: dev-build
           name: Vespera dev-build
           body: "Автосборка из ${{ github.sha }}"
           make_latest: false
-          files: vespera-client.jar
+          files: |
+            vespera-client.jar
+            build.txt

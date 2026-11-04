@@ -23,7 +23,23 @@ dependencies {
 // NanoVG + нативные библиотеки внутрь jar
 apply from: "nanovg.gradle"
 
+// SHA коммита сборки — по нему автообновление понимает, что вышла новая версия.
+// Локально = «local» (такие сборки сами не обновляются).
+def buildSha = (project.findProperty("build_sha") ?: "local").toString()
+def buildInfoDir = layout.buildDirectory.dir("generated/buildinfo")
+tasks.register("writeBuildInfo") {
+    inputs.property "sha", buildSha
+    outputs.dir buildInfoDir
+    doLast {
+        def f = buildInfoDir.get().file("assets/vespera/build.txt").asFile
+        f.parentFile.mkdirs()
+        f.text = buildSha
+    }
+}
+sourceSets.main.resources.srcDir(buildInfoDir)
+
 processResources {
+    dependsOn "writeBuildInfo"
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
         expand "version": project.version

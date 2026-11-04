@@ -257,6 +257,8 @@ public final class ClickGuiScreen extends Screen {
         float pillY = cy - 13f;
         x = pill(vg, x, pillY, "1.21.11", Theme.TEXT_DIM) + 8f;
         x = pill(vg, x, pillY, "Fabric", Theme.TEXT_DIM) + 12f;
+        if (dev.vespera.client.update.Updater.ready())
+            x = pill(vg, x, pillY, "Обновление — после перезапуска", Theme.TEXT_DIM) + 12f;
 
         // кнопка «Редактор HUD» (то же делает бинд H)
         String lbl = "Редактор HUD";
