@@ -1,0 +1,23 @@
+// Подключение NanoVG (LWJGL) к Fabric-моду.
+// Подключается из build.gradle через apply from: "nanovg.gradle"
+//
+// Версия должна совпадать с LWJGL Minecraft (для 1.21.11 это 3.3.3, задано в gradle.properties).
+
+def lwjglVersion = project.findProperty("lwjgl_version") ?: "3.3.3"
+def lwjglNatives = [
+        "natives-windows", "natives-windows-arm64",
+        "natives-linux",
+        "natives-macos", "natives-macos-arm64"
+]
+
+dependencies {
+    // Java-биндинги: компиляция + вкладываем в jar мода (jar-in-jar)
+    implementation "org.lwjgl:lwjgl-nanovg:${lwjglVersion}"
+    include "org.lwjgl:lwjgl-nanovg:${lwjglVersion}"
+
+    // Нативные библиотеки nanovg (.dll/.so/.dylib). LWJGL сам распакует нужную.
+    lwjglNatives.each { natives ->
+        runtimeOnly "org.lwjgl:lwjgl-nanovg:${lwjglVersion}:${natives}"
+        include "org.lwjgl:lwjgl-nanovg:${lwjglVersion}:${natives}"
+    }
+}

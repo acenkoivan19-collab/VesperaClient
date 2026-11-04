@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "vespera",
+  "version": "${version}",
+  "name": "Vespera Client",
+  "description": "Vespera Client — visual client with a NanoVG-rendered Soft UI menu",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.vespera.client.VesperaClient"
+    ]
+  },
+  "mixins": [
+    "vespera.mixins.json",
+    "vespera.features.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.17.0",
+    "minecraft": "~1.21.11",
+    "fabric-api": "*",
+    "java": ">=21"
+  },
+  "icon": "assets/vespera/textures/logo.png"
+}

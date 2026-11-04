@@ -1,0 +1,29 @@
+name: build
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          # та же версия, что собирает локально build.bat (Loom 1.13.4 на ней проверен)
+          gradle-version: 9.2.1
+      - run: gradle build --no-daemon -x test
+      - run: cp $(ls build/libs/vespera-client-*.jar | grep -v -- '-sources') ./vespera-client.jar
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev-build
+          name: Vespera dev-build
+          body: "Автосборка из ${{ github.sha }}"
+          make_latest: false
+          files: vespera-client.jar
