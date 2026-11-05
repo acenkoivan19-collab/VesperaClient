@@ -51,10 +51,10 @@ public final class JumpCirclesModule extends HudModule {
     private final NumberSetting lifeSec = setting(new NumberSetting("life", "Время жизни (сек)", 1.1f, 0.4f, 3f, 0.1f));
     private final BoolSetting highlight = setting(new BoolSetting("highlight", "Бегущий блик", true));
 
-    private static final int SEG = 72;
+    private static final int SEG = 96;
     private static final int SPARKS = 16;
 
-    /** {x, y, z, рождение мс, seed} */
+    /** {x, y, z, рождение мс, seed, рождение (nanoTime, мс)} */
     private final ArrayDeque<double[]> rings = new ArrayDeque<>();
     private boolean wasOnGround = true;
     private final float[] sx = new float[SEG + 1], sy = new float[SEG + 1], sd = new float[SEG + 1];
@@ -88,7 +88,7 @@ public final class JumpCirclesModule extends HudModule {
         if (wasOnGround && !ground && mc.player.getVelocity().y > 0.05) {
             for (int i = 0; i < (int) count.get(); i++)
                 rings.add(new double[]{mc.player.getX(), mc.player.getY() + 0.03, mc.player.getZ(),
-                        now + i * 140, Math.random() * 1000});
+                        now + i * 140, Math.random() * 1000, System.nanoTime() / 1e6 + i * 140});
             while (rings.size() > 9) rings.pollFirst();
         }
         wasOnGround = ground;
@@ -105,18 +105,19 @@ public final class JumpCirclesModule extends HudModule {
             long age = now - (long) r[3];
             if (age > life + 50) { it.remove(); continue; }
             if (age < 0 || age > life) continue;
-            float t = age / (float) life;
-            float e = Anim.easeOutCubic(t);
+            // время с точностью до долей миллисекунды — без «ступенек» на высоком FPS
+            float t = (float) Math.min(1.0, Math.max(0.0, (System.nanoTime() / 1e6 - r[5]) / life));
+            float e = easeOutQuint(t);
             double rad = 0.35 + (radius.get() - 0.35) * e;
-            // быстро загорается, долго гаснет
-            float a = bright.get() * Math.min(1f, t * 8f) * (1f - t) * (1f - t * 0.3f);
+            // мягкое появление и долгое плавное угасание (smoothstep с обеих сторон)
+            float a = bright.get() * smooth(0f, 0.10f, t) * (1f - smooth(0.35f, 1f, t));
             double phase = highlight.on() ? now / 1000.0 * 2.2 + r[4] : 0.8;
             float time = now / 1000f;
 
             switch (st) {
                 case 1 -> { // двойное: внутреннее догоняет внешнее
                     neon(vg, r, rad, a, phase, false, 0, time);
-                    double inner = 0.25 + (radius.get() * 0.62 - 0.25) * Anim.easeOutCubic(Math.max(0f, t - 0.12f) / 0.88f);
+                    double inner = 0.25 + (radius.get() * 0.62 - 0.25) * easeOutQuint(Math.max(0f, t - 0.12f) / 0.88f);
                     neon(vg, r, inner, a * 0.9f, phase + Math.PI, false, 0, time);
                 }
                 case 2 -> shockwave(vg, r, rad, a, e);
@@ -231,14 +232,24 @@ public final class JumpCirclesModule extends HudModule {
             double rnd = frac(Math.sin((seed + i) * 12.9898) * 43758.5453);
             double rnd2 = frac(Math.sin((seed + i) * 78.233) * 12345.678);
             double ang = 2 * Math.PI * (i + rnd * 0.6) / SPARKS;
-            double dist = maxR * (0.4 + 0.9 * Anim.easeOutCubic(t)) * (0.8 + 0.4 * rnd2);
+            double dist = maxR * (0.4 + 0.9 * easeOutQuint(t)) * (0.8 + 0.4 * rnd2);
             double up = (0.15 + 0.6 * rnd) * Math.sin(Math.PI * Math.min(1f, t * 1.2f)); // вверх и вниз
             if (!Projection.project(r[0] + Math.cos(ang) * dist, r[1] + up, r[2] + Math.sin(ang) * dist, tmp)) continue;
             float px = Projection.pixelsPerBlock(tmp[2]);
-            float sz = Math.max(1f, (float) (0.035 * (1 - t * 0.6)) * px);
+            float sz = Math.max(1f, (float) (0.035 * (1 - smooth(0.2f, 1f, t) * 0.7)) * px);
             Draw.circle(vg, tmp[0], tmp[1], sz * 3f, c, a * 0.15f);
             Draw.circle(vg, tmp[0], tmp[1], sz, Draw.lerpColor(c, 0xFFFFFFFF, 0.6f), a);
         }
+    }
+
+    private static float easeOutQuint(float t) {
+        float u = 1f - t;
+        return 1f - u * u * u * u * u;
+    }
+
+    private static float smooth(float e0, float e1, float x) {
+        float t = Math.max(0f, Math.min(1f, (x - e0) / (e1 - e0)));
+        return t * t * (3f - 2f * t);
     }
 
     private static double frac(double v) {
