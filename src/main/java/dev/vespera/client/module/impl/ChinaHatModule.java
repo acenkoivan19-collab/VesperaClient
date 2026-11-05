@@ -33,8 +33,8 @@ public final class ChinaHatModule extends HudModule {
     private final ColorSetting rimColor = setting(new ColorSetting("rimColor", "Цвет ободка", 0xFF5C7CFF));
     private final ColorSetting rimColor2 = setting(new ColorSetting("rimColor2", "Второй цвет ободка", 0xFF9A6BFF));
     private final NumberSetting size = setting(new NumberSetting("size", "Размер", 10, 5, 20, 1));
-    private final NumberSetting opacity = setting(new NumberSetting("opacity", "Прозрачность шляпы", 0.55, 0.15, 1.0, 0.05));
-    private final NumberSetting glow = setting(new NumberSetting("glow", "Свечение ободка", 1.0, 0.0, 2.0, 0.1));
+    private final NumberSetting opacity = setting(new NumberSetting("opacity", "Прозрачность шляпы", 0.55f, 0.15f, 1.0f, 0.05f));
+    private final NumberSetting glow = setting(new NumberSetting("glow", "Свечение ободка", 1.0f, 0.0f, 2.0f, 0.1f));
     private final BoolSetting spin = setting(new BoolSetting("spin", "Вращение переливания", true));
     private final ChoiceSetting targets = setting(new ChoiceSetting("targets", "На ком", 0, "Себе", "Себе и игрокам")
             .hints("Только на тебе (вид от 3-го лица, F5)", "И на других игроках, которых ты видишь напрямую"));
