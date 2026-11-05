@@ -35,6 +35,7 @@ public final class ChinaHatModule extends HudModule {
     private final NumberSetting size = setting(new NumberSetting("size", "Размер", 10, 5, 20, 1));
     private final NumberSetting opacity = setting(new NumberSetting("opacity", "Прозрачность шляпы", 0.55f, 0.15f, 1.0f, 0.05f));
     private final NumberSetting glow = setting(new NumberSetting("glow", "Свечение ободка", 1.0f, 0.0f, 2.0f, 0.1f));
+    private final NumberSetting seat = setting(new NumberSetting("seat", "Посадка (ниже ↔ выше)", 0f, -10f, 10f, 1f));
     private final BoolSetting spin = setting(new BoolSetting("spin", "Вращение переливания", true));
     private final ChoiceSetting targets = setting(new ChoiceSetting("targets", "На ком", 0, "Себе", "Себе и игрокам")
             .hints("Только на тебе (вид от 3-го лица, F5)", "И на других игроках, которых ты видишь напрямую"));
@@ -77,7 +78,10 @@ public final class ChinaHatModule extends HudModule {
         double rad = sz * 0.065;          // 10 → 0.65 блока: широкие поля, как на референсе
         double hgt = rad * 0.42;          // пологий конус
         Vec3d p = ent.getLerpedPos(tp);
-        double by = p.y + ent.getHeight() + 0.02;   // поля лежат на макушке
+        // Шляпа сидит прямо на голове: поля чуть ниже макушки (макушка ≈ глаза + 0.18).
+        // Считаем от высоты глаз — так шляпа правильно опускается при приседании и плавании.
+        double eyeY = p.y + (ent.getEyeY() - ent.getY());
+        double by = eyeY + 0.10 + seat.get() * 0.01;
         double ay = by + hgt;
 
         if (!Projection.project(p.x, ay, p.z, apex)) return;
