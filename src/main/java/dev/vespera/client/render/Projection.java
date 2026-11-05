@@ -20,6 +20,9 @@ public final class Projection {
     private static double rX, rZ, uX, uY, uZ, fX, fY, fZ;
     private static double focal, aspect;
     private static float width, height;
+    /** Сдвиг экранных координат (для превью в панели настроек). */
+    private static float offX, offY;
+    private static double[] saved;
 
     /** FOV последнего кадра мира, градусы; ≤ 0 — ещё не известен. */
     private static float capturedFov = -1f;
@@ -75,10 +78,52 @@ public final class Projection {
         if (vz < 0.05) return false;
         double vx = dx * rX + dz * rZ;
         double vy = dx * uX + dy * uY + dz * uZ;
-        out[0] = (float) ((1.0 + vx * focal / (aspect * vz)) * 0.5 * width);
-        out[1] = (float) ((1.0 - vy * focal / vz) * 0.5 * height);
+        out[0] = offX + (float) ((1.0 + vx * focal / (aspect * vz)) * 0.5 * width);
+        out[1] = offY + (float) ((1.0 - vy * focal / vz) * 0.5 * height);
         out[2] = (float) vz;
         return true;
+    }
+
+    public static double camX() { return camX; }
+    public static double camY() { return camY; }
+    public static double camZ() { return camZ; }
+
+    /**
+     * Временная «камера превью»: всё, что рисуется через project()/WorldDraw/Voxel,
+     * попадает в прямоугольник панели (x, y, w, h). Камера смотрит на точку target
+     * с расстояния dist под углами yaw/pitch (градусы, как в Minecraft).
+     * Обязательно закрыть endPreview().
+     */
+    public static void beginPreview(float x, float y, float w, float h,
+                                    double tx, double ty, double tz, double dist,
+                                    double yawDeg, double pitchDeg, double fovDeg) {
+        saved = new double[]{ready ? 1 : 0, camX, camY, camZ, rX, rZ, uX, uY, uZ, fX, fY, fZ,
+                focal, aspect, width, height, offX, offY};
+        double yaw = Math.toRadians(yawDeg), pitch = Math.toRadians(pitchDeg);
+        double sy = Math.sin(yaw), cy = Math.cos(yaw), sp = Math.sin(pitch), cp = Math.cos(pitch);
+        rX = -cy;            rZ = -sy;
+        uX = -sy * sp;       uY = cp;        uZ = cy * sp;
+        fX = -sy * cp;       fY = -sp;       fZ = cy * cp;
+        camX = tx - fX * dist;
+        camY = ty - fY * dist;
+        camZ = tz - fZ * dist;
+        focal = 1.0 / Math.tan(Math.toRadians(fovDeg) / 2.0);
+        width = w;
+        height = h;
+        aspect = w / (double) h;
+        offX = x;
+        offY = y;
+        ready = true;
+    }
+
+    public static void endPreview() {
+        if (saved == null) return;
+        double[] s = saved;
+        ready = s[0] > 0; camX = s[1]; camY = s[2]; camZ = s[3];
+        rX = s[4]; rZ = s[5]; uX = s[6]; uY = s[7]; uZ = s[8]; fX = s[9]; fY = s[10]; fZ = s[11];
+        focal = s[12]; aspect = s[13]; width = (float) s[14]; height = (float) s[15];
+        offX = (float) s[16]; offY = (float) s[17];
+        saved = null;
     }
 
     /** Сколько HUD-пикселей занимает 1 блок на глубине depth (для билбордов и толщины линий). */

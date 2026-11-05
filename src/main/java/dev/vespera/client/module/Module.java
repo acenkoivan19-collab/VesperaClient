@@ -98,6 +98,11 @@ public class Module {
     /** Нарисовать превью в прямоугольнике панели (NanoVG, координаты панели). */
     public void renderPreview(long vg, float x, float y, float w, float h) {}
 
+    /** Высота области превью в панели настроек. */
+    public float previewHeight() {
+        return 76f;
+    }
+
     /** Все настройки модуля в порядке показа в ПКМ-панели. */
     public List<Setting<?>> settings() {
         return Collections.unmodifiableList(settings);

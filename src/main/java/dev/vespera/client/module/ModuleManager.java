@@ -85,6 +85,8 @@ public final class ModuleManager {
         // ---- Cosmetics
         register(new WingsModule());
         register(new HaloModule());
+        register(new BackpackModule());
+        register(new PetModule());
         // ---- Appearance
         register(new ThemeModule());
     }

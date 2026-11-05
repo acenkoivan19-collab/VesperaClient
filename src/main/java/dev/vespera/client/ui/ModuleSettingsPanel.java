@@ -134,7 +134,7 @@ public final class ModuleSettingsPanel {
 
         // ---- превью
         if (module.hasPreview()) {
-            float pvH = 76f;
+            float pvH = module.previewHeight();
             Draw.linear(vg, x, y, w, pvH, 8f, x, y, x, y + pvH, 0xFF6B8FB5, 1f, 0xFF3E5A3A, 1f);
             Draw.stroke(vg, x + 0.5f, y + 0.5f, w - 1f, pvH - 1f, 8f, 1f, Theme.BORDER, 1f);
             nvgSave(vg);
