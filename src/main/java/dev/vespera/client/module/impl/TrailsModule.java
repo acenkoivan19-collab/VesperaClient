@@ -116,7 +116,7 @@ public final class TrailsModule extends HudModule {
         }
     }
 
-    private static float fade(long age, double life) {
+    private static float fade(double age, double life) {
         float t = 1f - (float) Math.min(1.0, Math.max(0.0, age / life));
         return t * t;
     }
