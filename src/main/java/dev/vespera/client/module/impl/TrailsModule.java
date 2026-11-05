@@ -58,6 +58,8 @@ public final class TrailsModule extends HudModule {
     private static final double SPACING = 0.12;
     /** На сколько частей делим каждый участок при сглаживании. */
     private static final int SUBDIV = 3;
+    /** Позиция игрока в этом кадре и с какого расстояния от него начинать шлейф. */
+    private double curX, curZ, startDist;
 
     public TrailsModule() {
         super("Trails", "Шлейф за спиной: занавес, лента, линия, следы, кольца, волны", Category.VISUALS);
@@ -114,6 +116,12 @@ public final class TrailsModule extends HudModule {
         if (trail.isEmpty()) return;
         List<double[]> pts = new ArrayList<>(trail);
         int st = style.index();
+        // где сейчас игрок и откуда начинать шлейф: от 1-го лица — только за спиной,
+        // чтобы при взгляде вниз под ногами не было полосы
+        Vec3d me = mc.player.getLerpedPos(Projection.tickProgress(mc));
+        curX = me.x;
+        curZ = me.z;
+        startDist = mc.options.getPerspective().isFirstPerson() ? 1.1 : 0.3;
         if (st <= 2) { // сплошным стилям — хвост до текущей позиции
             Vec3d cur = mc.player.getLerpedPos(Projection.tickProgress(mc));
             pts.add(new double[]{cur.x, cur.y, cur.z, now, mc.player.getHeight()});
@@ -136,7 +144,7 @@ public final class TrailsModule extends HudModule {
         for (int i = 1; i < pts.size(); i++) {
             double[] a = pts.get(i - 1), b = pts.get(i);
             if (same(a, b)) continue;
-            float f = (fade(now - a[3], life) + fade(now - b[3], life)) / 2f;
+            float f = (fade(now - a[3], life) + fade(now - b[3], life)) / 2f * near(a, b);
             if (f <= 0.01f) continue;
             int c = colorAt(f, now);
             int top = Draw.lerpColor(c, 0xFFFFFFFF, 0.45f);
@@ -157,7 +165,7 @@ public final class TrailsModule extends HudModule {
             double[] a = pts.get(i - 1), b = pts.get(i);
             double dx = b[0] - a[0], dz = b[2] - a[2], len = Math.hypot(dx, dz);
             if (len < 1e-3) continue;
-            float f = (fade(now - a[3], life) + fade(now - b[3], life)) / 2f;
+            float f = (fade(now - a[3], life) + fade(now - b[3], life)) / 2f * near(a, b);
             if (f <= 0.01f) continue;
             double nx = -dz / len * half * (0.4 + 0.6 * f), nz = dx / len * half * (0.4 + 0.6 * f);
             double ya = a[1] + a[4] * 0.5, yb = b[1] + b[4] * 0.5;
@@ -173,7 +181,7 @@ public final class TrailsModule extends HudModule {
         for (int i = 1; i < pts.size(); i++) {
             double[] a = pts.get(i - 1), b = pts.get(i);
             if (same(a, b)) continue;
-            float f = (fade(now - a[3], life) + fade(now - b[3], life)) / 2f;
+            float f = (fade(now - a[3], life) + fade(now - b[3], life)) / 2f * near(a, b);
             if (f <= 0.01f) continue;
             int c = colorAt(f, now);
             double ya = a[1] + a[4] * 0.5, yb = b[1] + b[4] * 0.5;
@@ -192,7 +200,7 @@ public final class TrailsModule extends HudModule {
             acc += Math.hypot(b[0] - a[0], b[2] - a[2]);
             if (acc < 0.45) continue;
             acc = 0;
-            float f = fade(now - b[3], life);
+            float f = fade(now - b[3], life) * near(b, b);
             if (f <= 0.01f) continue;
             int c = colorAt(f, now);
             double r = 0.12 + 0.12 * height.get();
@@ -211,7 +219,7 @@ public final class TrailsModule extends HudModule {
             if (acc < (rise ? 0.55 : 0.9)) continue;
             acc = 0;
             double age = Math.min(1.0, (now - b[3]) / life);
-            float f = fade(now - b[3], life);
+            float f = fade(now - b[3], life) * near(b, b);
             if (f <= 0.01f) continue;
             int c = colorAt(f, now);
             if (rise) {
@@ -237,6 +245,17 @@ public final class TrailsModule extends HudModule {
 
     private static boolean same(double[] a, double[] b) {
         return Math.hypot(b[0] - a[0], b[2] - a[2]) < 1e-3 && Math.abs(b[1] - a[1]) < 1e-3;
+    }
+
+    /**
+     * Множитель «близко к игроку»: участки ближе startDist не рисуются, дальше — плавно
+     * проявляются на протяжении 0.6 блока. Так шлейф выходит из-за спины, а не из-под ног.
+     */
+    private float near(double[] a, double[] b) {
+        double mx = (a[0] + b[0]) / 2 - curX, mz = (a[2] + b[2]) / 2 - curZ;
+        float t = (float) ((Math.sqrt(mx * mx + mz * mz) - startDist) / 0.6);
+        t = Math.max(0f, Math.min(1f, t));
+        return t * t * (3f - 2f * t);
     }
 
     /** Мягкое затухание к концу шлейфа (smoothstep — без резкого обрыва). */
