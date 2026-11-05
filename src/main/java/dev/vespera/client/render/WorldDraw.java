@@ -30,6 +30,11 @@ public final class WorldDraw {
 
     private WorldDraw() {}
 
+    /** Общий NVGPaint для градиентов в модулях мира (только из render-потока). */
+    public static NVGPaint paint() {
+        return PAINT;
+    }
+
     /** Горизонтальное кольцо. glow — дополнительный широкий полупрозрачный проход. */
     public static void ring(long vg, double cx, double cy, double cz, double radius, int segments,
                             float width, int argb, float alpha, boolean glow) {
