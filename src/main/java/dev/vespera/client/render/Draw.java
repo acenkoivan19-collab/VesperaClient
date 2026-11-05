@@ -40,6 +40,12 @@ public final class Draw {
         return c;
     }
 
+    /** Цвет радуги по оттенку h (0..1, по кругу), насыщенный и яркий. */
+    public static int hue(float h) {
+        h = h - (float) Math.floor(h);
+        return java.awt.Color.HSBtoRGB(h, 0.65f, 1f) | 0xFF000000;
+    }
+
     public static int lerpColor(int a, int b, float t) {
         t = Math.max(0f, Math.min(1f, t));
         int aa = (a >>> 24), ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
