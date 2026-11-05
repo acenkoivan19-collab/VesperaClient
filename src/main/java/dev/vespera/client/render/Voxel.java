@@ -133,6 +133,48 @@ public final class Voxel {
     }
 
     /**
+     * Пиксель-арт «выдавленный» в объём (как предметы в Minecraft): каждая непрозрачная
+     * клетка — кубик px×px×depth. Соседние клетки одного цвета в строке склеиваются
+     * в один кубик, чтобы рисовать меньше граней.
+     * grid[row][col], row 0 — верх; низ-лево картинки = текущий (0,0), картинка в плоскости XY,
+     * толщина по Z от 0 до depth. side = −1 зеркалит по X (рисует влево от нуля).
+     */
+    public Voxel pixels(int[][] grid, double px, double depth, int side) {
+        int rows = grid.length;
+        for (int r = 0; r < rows; r++) {
+            int[] row = grid[r];
+            double y0 = (rows - 1 - r) * px, y1 = y0 + px;
+            int c = 0;
+            while (c < row.length) {
+                int col = row[c];
+                if (col == 0) { c++; continue; }
+                int e = c + 1;
+                while (e < row.length && row[e] == col) e++;
+                double x0 = c * px, x1 = e * px;
+                if (side >= 0) box(x0, y0, 0, x1, y1, depth, col);
+                else box(-x1, y0, 0, -x0, y1, depth, col);
+                c = e;
+            }
+        }
+        return this;
+    }
+
+    /** Пиксель-арт из строк: символ → цвет по палитре (пары «символ, цвет»), '.' — пусто. */
+    public static int[][] grid(String[] rows, Object... palette) {
+        java.util.Map<Character, Integer> pal = new java.util.HashMap<>();
+        for (int i = 0; i + 1 < palette.length; i += 2) pal.put((Character) palette[i], (Integer) palette[i + 1]);
+        int w = 0;
+        for (String r : rows) w = Math.max(w, r.length());
+        int[][] g = new int[rows.length][w];
+        for (int r = 0; r < rows.length; r++)
+            for (int c = 0; c < rows[r].length(); c++) {
+                Integer v = pal.get(rows[r].charAt(c));
+                g[r][c] = v == null ? 0 : v;
+            }
+        return g;
+    }
+
+    /**
      * Нарисовать модель в мире.
      * @param ox,oy,oz точка «ног» тела в мире
      * @param yawDeg   поворот тела (как bodyYaw Minecraft: 0 = смотрит на +Z)
