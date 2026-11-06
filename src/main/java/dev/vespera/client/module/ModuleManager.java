@@ -82,6 +82,7 @@ public final class ModuleManager {
         register(new BpsModule());
         // ---- Utility
         register(new ZoomModule());
+        register(new AutoSprintModule());
         register(new FpsBoostModule());
         // ---- Cosmetics
         register(new WingsModule());
