@@ -1,6 +1,7 @@
 package dev.vespera.client.mixin.feature;
 
 import dev.vespera.client.module.impl.ItemPhysicsModule;
+import dev.vespera.client.util.ItemPhysicsState;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.ItemEntityRenderer;
 import net.minecraft.client.render.entity.state.ItemEntityRenderState;

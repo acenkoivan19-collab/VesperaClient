@@ -1,6 +1,6 @@
 package dev.vespera.client.module.impl;
 
-import dev.vespera.client.mixin.feature.ItemPhysicsState;
+import dev.vespera.client.util.ItemPhysicsState;
 import dev.vespera.client.module.Category;
 import dev.vespera.client.module.Module;
 import dev.vespera.client.module.ModuleManager;
