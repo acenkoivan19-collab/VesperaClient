@@ -51,6 +51,7 @@ public final class ModuleManager {
         register(new HitboxesModule());
         register(new BlockOverlayModule());
         register(new HandViewModule());
+        register(new ItemPhysicsModule());
         // ---- World
         register(new TimeChangerModule());
         register(new WeatherChangerModule());
