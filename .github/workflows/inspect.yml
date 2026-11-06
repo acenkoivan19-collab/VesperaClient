@@ -22,3 +22,4 @@ jobs:
           JAR=$(find ~/.gradle/caches .gradle -path '*minecraft*' -name '*.jar' 2>/dev/null | grep -i -E 'merged.*yarn|named|mapped' | grep -v sources | head -1)
           echo "JAR=$JAR"
           for c in ${{ github.event.inputs.classes }}; do echo "=== $c"; javap -p -cp "$JAR" "$c" || true; done
+          echo "=== CODE"; javap -c -p -cp "$JAR" net.minecraft.client.render.entity.ItemEntityRenderer | sed -n '/public void render(net.minecraft.client.render.entity.state.ItemEntityRenderState/,/^$/p' | head -150
