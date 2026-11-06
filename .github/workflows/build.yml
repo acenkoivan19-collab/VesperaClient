@@ -18,7 +18,7 @@ jobs:
         with:
           # та же версия, что собирает локально build.bat (Loom 1.13.4 на ней проверен)
           gradle-version: 9.2.1
-      - run: gradle build --no-daemon -x test -Pbuild_sha=${{ github.sha }} -Pmod_version=1.1.${{ github.run_number }}
+      - run: gradle build --no-daemon -x test -Pbuild_sha=${{ github.sha }}
       - run: |
           cp $(ls build/libs/vespera-client-*.jar | grep -v -- '-sources') ./vespera-client.jar
           echo -n "${{ github.sha }}" > build.txt
