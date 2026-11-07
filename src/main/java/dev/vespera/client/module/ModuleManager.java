@@ -53,6 +53,7 @@ public final class ModuleManager {
         register(new DamageNumbersModule());
         register(new KillEffectModule());
         register(new WorldParticlesModule());
+        register(new NightSkyModule());
         register(new BlockOverlayModule());
         register(new HandViewModule());
         register(new ItemPhysicsModule());
