@@ -257,8 +257,6 @@ public final class ClickGuiScreen extends Screen {
         float pillY = cy - 13f;
         x = pill(vg, x, pillY, "1.21.11", Theme.TEXT_DIM) + 8f;
         x = pill(vg, x, pillY, "Fabric", Theme.TEXT_DIM) + 12f;
-        if (dev.vespera.client.update.Updater.ready())
-            x = pill(vg, x, pillY, "Обновление — после перезапуска", Theme.TEXT_DIM) + 12f;
 
         // кнопка «Редактор HUD» (то же делает бинд H)
         String lbl = "Редактор HUD";
@@ -273,6 +271,14 @@ public final class ClickGuiScreen extends Screen {
         Draw.rect(vg, ix - 0.6f, iy - 3f, 1.2f, 6f, 0.6f, Theme.TEXT_DIM);
         Draw.rect(vg, ix - 3f, iy - 0.6f, 6f, 1.2f, 0.6f, Theme.TEXT_DIM);
         Draw.text(vg, lbl, x + 25f, iy + 0.5f, Fonts.SEMIBOLD, 11.5f, Draw.LEFT_MID, Theme.TEXT, 1f);
+        x += bw + 8f;
+
+        // плашка «обновление скачано» — только если влезает до поиска (кнопку редактора не перекрывает)
+        if (dev.vespera.client.update.Updater.ready()) {
+            String up = "Обновление готово";
+            float need = Draw.textWidth(vg, up, Fonts.SEMIBOLD, 11.5f) + 30f;
+            if (x + need <= W - CONTENT_R - SEARCH_W - 10f) pill(vg, x, pillY, up, Theme.TEXT_DIM);
+        }
 
         // поиск закреплён справа и не участвует в скролле
         search.render(vg, W - CONTENT_R - SEARCH_W, HEADER_Y, SEARCH_W, SEARCH_H, mx, my, dt);
