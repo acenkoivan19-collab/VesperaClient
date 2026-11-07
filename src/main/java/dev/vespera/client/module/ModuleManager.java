@@ -49,6 +49,10 @@ public final class ModuleManager {
         register(new ChinaHatModule());
         register(new SwarmModule());
         register(new HitboxesModule());
+        register(new TargetEspModule());
+        register(new DamageNumbersModule());
+        register(new KillEffectModule());
+        register(new WorldParticlesModule());
         register(new BlockOverlayModule());
         register(new HandViewModule());
         register(new ItemPhysicsModule());

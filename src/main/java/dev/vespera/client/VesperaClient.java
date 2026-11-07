@@ -76,6 +76,8 @@ public final class VesperaClient implements ClientModInitializer {
             if (player == MinecraftClient.getInstance().player) {
                 TargetHudModule.onAttack(entity);
                 HitBurstModule.onAttack(entity);
+                dev.vespera.client.module.impl.TargetEspModule.onAttack(entity);
+                dev.vespera.client.module.impl.KillEffectModule.onAttack(entity);
                 dev.vespera.client.module.hud.ComboModule.onAttack();
             }
             return ActionResult.PASS;
