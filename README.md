@@ -1,3 +1,8 @@
+> **Разработка переехала в `soglasenka99/vespera-src`** (`mods-src/vespera-client`).
+> Этот репозиторий больше не собирается: автосборка отключена, релиз `dev-build` не обновляется.
+> Все визуалы отсюда (Hit Marker, Totem Pop, Item Glow, Projectile Trails, Block Effects,
+> Screen Effects, Render Quality, Item Physics, Auto Sprint и др.) уже перенесены в общий мод.
+
 # Vespera Client — NanoVG ClickGUI / Fabric 1.21.11
 
 ClickGUI в стиле Dark Soft UI. Вся отрисовка идёт через **NanoVG (LWJGL, GL3-бэкенд)**.
