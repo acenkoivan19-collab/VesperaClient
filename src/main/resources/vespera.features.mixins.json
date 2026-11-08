@@ -8,7 +8,8 @@
     "InGameHudMixin",
     "HeldItemRendererMixin",
     "ItemEntityRendererMixin",
-    "ItemEntityRenderStateMixin"
+    "ItemEntityRenderStateMixin",
+    "ClientPlayNetworkHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 0

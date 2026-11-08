@@ -46,11 +46,16 @@ public final class NightSkyModule extends HudModule {
 
     /** Направления столбцов сияния: [curtain][col] → {азимут, низ, верх (радианы)} — база, без колыхания. */
     private final double[][][] col = new double[CURTAINS][COLS][3];
-    private final float[][] colVis = new float[CURTAINS][COLS];      // 0..1 — видно ли небо в эту сторону
+    private final float[][] colVis = new float[CURTAINS][COLS];      // 0..1 — видно ли небо в эту сторону (плавно)
+    private final float[][] colTgt = new float[CURTAINS][COLS];      // последний результат луча (0 или 1)
     private final double[][] star = new double[MAX_STARS][4];        // dx, dy, dz, яркость
     private final float[] starVis = new float[MAX_STARS];
+    private final float[] starTgt = new float[MAX_STARS];
     private final double[][] blob = new double[BLOBS][5];           // dx, dy, dz, радиус (рад), оттенок
     private final float[] blobVis = new float[BLOBS];
+    private final float[] blobTgt = new float[BLOBS];
+    /** Сглаженная «ночность» — чтобы небо не мигало, если время на кадр прыгнуло. */
+    private float nightSmooth = -1f;
     private final double[][] rayH = new double[CURTAINS][COLS];      // высота лучей (доля)
     private int cursor;
     private Vec3d lastCam = Vec3d.ZERO;
@@ -60,6 +65,13 @@ public final class NightSkyModule extends HudModule {
         super("Night Sky", "Северное сияние и звёздное небо ночью", Category.VISUALS);
         about("Ночью на небе появляется северное сияние (фиолетовое, зелёное, розовое или радужное) "
                 + "и много мерцающих звёзд. Не рисуется на блоках — только там, где видно небо.");
+        // До первого луча считаем, что небо видно — иначе первые секунды всё «включается» кусками
+        for (float[] row : colVis) java.util.Arrays.fill(row, 1f);
+        for (float[] row : colTgt) java.util.Arrays.fill(row, 1f);
+        java.util.Arrays.fill(starVis, 1f);
+        java.util.Arrays.fill(starTgt, 1f);
+        java.util.Arrays.fill(blobVis, 1f);
+        java.util.Arrays.fill(blobTgt, 1f);
         Random r = new Random(1337);
         for (int c = 0; c < CURTAINS; c++) {
             // занавесы равномерно по всему горизонту, чтобы сияние было «вокруг»
@@ -116,7 +128,11 @@ public final class NightSkyModule extends HudModule {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null || !Projection.isReady()) return;
         if (mc.world.getRegistryKey() != World.OVERWORLD) return;
-        float nf = night(mc);
+        // Плавно догоняем целевую «ночность» (~0.7 с): один кадр с дневным временем больше не даёт вспышку
+        float target = night(mc);
+        if (nightSmooth < 0f) nightSmooth = target;
+        nightSmooth += (target - nightSmooth) * Math.min(1f, dt * 1.5f);
+        float nf = nightSmooth;
         if (nf <= 0.01f) return;
 
         Vec3d cam = new Vec3d(Projection.camX(), Projection.camY(), Projection.camZ());
@@ -125,6 +141,7 @@ public final class NightSkyModule extends HudModule {
             lastCam = cam;
         }
         updateVisibility(mc, cam, 140);
+        smoothVisibility(dt);
 
         double time = System.currentTimeMillis() / 1000.0;
         float k = intensity.get() * nf;
@@ -151,15 +168,24 @@ public final class NightSkyModule extends HudModule {
                 int c = i / COLS, j = i % COLS;
                 double az = col[c][j][0], el = col[c][j][1];
                 boolean open = clear(mc, cam, Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az));
-                colVis[c][j] = open ? 1f : 0f;
+                colTgt[c][j] = open ? 1f : 0f;
             } else if (i < CURTAINS * COLS + MAX_STARS) {
                 int s = i - CURTAINS * COLS;
-                starVis[s] = clear(mc, cam, star[s][0], star[s][1], star[s][2]) ? 1f : 0f;
+                starTgt[s] = clear(mc, cam, star[s][0], star[s][1], star[s][2]) ? 1f : 0f;
             } else {
                 int q = i - CURTAINS * COLS - MAX_STARS;
-                blobVis[q] = clear(mc, cam, blob[q][0], blob[q][1], blob[q][2]) ? 1f : 0f;
+                blobTgt[q] = clear(mc, cam, blob[q][0], blob[q][1], blob[q][2]) ? 1f : 0f;
             }
         }
+    }
+
+    /** Видимость меняется плавно (~0.25 с), а не 0/1 — иначе куски неба мигают при каждом пересчёте лучей. */
+    private void smoothVisibility(float dt) {
+        float k = Math.min(1f, dt * 4f);
+        for (int c = 0; c < CURTAINS; c++)
+            for (int j = 0; j < COLS; j++) colVis[c][j] += (colTgt[c][j] - colVis[c][j]) * k;
+        for (int s = 0; s < MAX_STARS; s++) starVis[s] += (starTgt[s] - starVis[s]) * k;
+        for (int q = 0; q < BLOBS; q++) blobVis[q] += (blobTgt[q] - blobVis[q]) * k;
     }
 
     private boolean clear(MinecraftClient mc, Vec3d cam, double dx, double dy, double dz) {
@@ -174,11 +200,11 @@ public final class NightSkyModule extends HudModule {
     private void drawStars(long vg, Vec3d cam, double time, float k) {
         int n = (int) starCount.get();
         for (int s = 0; s < n; s++) {
-            if (starVis[s] <= 0f) continue;
+            if (starVis[s] <= 0.02f) continue;
             double[] st = star[s];
             if (!Projection.project(cam.x + st[0] * DOME, cam.y + st[1] * DOME, cam.z + st[2] * DOME, a)) continue;
             float tw = (float) (0.55 + 0.45 * Math.sin(time * (1.3 + st[3] * 2) + s * 1.7));
-            float br = (float) (0.25 + 0.75 * st[3]) * tw * Math.min(1f, k);
+            float br = (float) (0.25 + 0.75 * st[3]) * tw * Math.min(1f, k) * starVis[s];
             float r = 0.55f + (float) st[3] * 1.9f;
             if (st[3] > 0.6) { // яркие — с ореолом и лучиками
                 Draw.circle(vg, a[0], a[1], r * 4.5f, 0xFFDCE6FF, br * 0.12f);
@@ -196,7 +222,7 @@ public final class NightSkyModule extends HudModule {
     /** Млечный путь: мягкие фиолетово-синие облачка (радиальный градиент). */
     private void drawNebula(long vg, Vec3d cam, float k) {
         for (int i = 0; i < BLOBS; i++) {
-            if (blobVis[i] <= 0f) continue;
+            if (blobVis[i] <= 0.02f) continue;
             double[] q = blob[i];
             if (!Projection.project(cam.x + q[0] * DOME, cam.y + q[1] * DOME, cam.z + q[2] * DOME, a)) continue;
             // радиус в пикселях: проецируем точку, смещённую на угол q[3] вверх
@@ -207,7 +233,7 @@ public final class NightSkyModule extends HudModule {
             float rad = (float) Math.hypot(b[0] - a[0], b[1] - a[1]);
             if (rad < 2) continue;
             int c = Draw.lerpColor(0xFF6A3AB8, 0xFF3A4FB8, (float) q[4]);
-            nvgRadialGradient(vg, a[0], a[1], rad * 0.1f, rad, Draw.c1(c, 0.16f * k), Draw.c2(c, 0f),
+            nvgRadialGradient(vg, a[0], a[1], rad * 0.1f, rad, Draw.c1(c, 0.16f * k * blobVis[i]), Draw.c2(c, 0f),
                     dev.vespera.client.render.WorldDraw.paint());
             nvgBeginPath(vg);
             nvgCircle(vg, a[0], a[1], rad);
@@ -232,7 +258,7 @@ public final class NightSkyModule extends HudModule {
             double sway = time * (0.07 + c * 0.02);
             for (int j = 0; j < COLS - 1; j++) {
                 float vis = Math.min(colVis[c][j], colVis[c][j + 1]);
-                if (vis <= 0f) continue;
+                if (vis <= 0.02f) continue;
                 double u0 = j / (double) (COLS - 1), u1 = (j + 1) / (double) (COLS - 1);
                 // края занавеса мягко гаснут
                 float edge = (float) Math.min(1, Math.min(u0, 1 - u1) * 6 + 0.05);
@@ -240,7 +266,7 @@ public final class NightSkyModule extends HudModule {
                 // мерцающие «лучи»: яркость полосы меняется по времени
                 float ray = (float) (0.55 + 0.45 * Math.sin(time * 1.7 + j * 0.9 + c * 2.0)
                         * Math.sin(time * 0.6 + j * 0.37));
-                float alpha = k * edge * ray * 0.55f;
+                float alpha = k * edge * ray * 0.55f * vis;
                 if (alpha <= 0.01f) continue;
                 int[] cl = colors(time, u0 + c * 0.3);
                 // нижняя половина: яркий низ → середина

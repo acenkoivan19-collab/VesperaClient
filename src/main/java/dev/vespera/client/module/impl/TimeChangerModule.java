@@ -1,5 +1,7 @@
 package dev.vespera.client.module.impl;
 
+import dev.vespera.client.module.ModuleManager;
+
 import dev.vespera.client.module.Category;
 import dev.vespera.client.module.Module;
 import dev.vespera.client.module.setting.ChoiceSetting;
@@ -28,10 +30,25 @@ public final class TimeChangerModule extends Module {
 
     @Override
     public void onTick(MinecraftClient mc) {
+        apply(mc);
+    }
+
+    private void apply(MinecraftClient mc) {
         if (mc.world == null) return;
         int i = time.index();
         // час 0 в Minecraft = 6:00 утра → сдвиг на 6 часов
         long t = i < PRESETS.length ? PRESETS[i] : (long) (((hour.get() - 6f + 24f) % 24f) * 1000f);
         mc.world.getLevelProperties().setTimeOfDay(t);
+    }
+
+    /**
+     * Сервер раз в секунду присылает своё время. Пакет применяется между тиками, и при высоком FPS
+     * несколько кадров рисовались с серверным (дневным) временем — небо мигало. Поэтому время
+     * ставим заново сразу после пакета и перед каждым кадром (миксины ClientPlayNetworkHandler и GameRenderer).
+     */
+    public static void reapply() {
+        TimeChangerModule m = ModuleManager.get(TimeChangerModule.class);
+        if (m == null || !m.isEnabled()) return;
+        m.apply(MinecraftClient.getInstance());
     }
 }

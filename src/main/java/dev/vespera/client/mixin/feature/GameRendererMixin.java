@@ -6,6 +6,8 @@ import dev.vespera.client.render.Projection;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
+import dev.vespera.client.module.impl.TimeChangerModule;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -29,5 +31,12 @@ public abstract class GameRendererMixin {
             cir.setReturnValue(fov);
         }
         Projection.captureFov(fov); // инфраструктура, нужна всем 3D-модулям
+    }
+
+    /** Time Changer: время ставим перед каждым кадром — иначе кадр после серверного пакета времени «мигает» днём. */
+    @Inject(method = "render(Lnet/minecraft/client/render/RenderTickCounter;Z)V", at = @At("HEAD"))
+    private void vespera$time(CallbackInfo ci) {
+        if (!ModuleManager.get(TimeChangerModule.class).isEnabled()) return;
+        TimeChangerModule.reapply();
     }
 }
