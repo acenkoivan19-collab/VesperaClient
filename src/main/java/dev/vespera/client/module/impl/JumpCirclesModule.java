@@ -8,6 +8,7 @@ import dev.vespera.client.module.setting.ColorSetting;
 import dev.vespera.client.module.setting.NumberSetting;
 import dev.vespera.client.render.Draw;
 import dev.vespera.client.render.Projection;
+import dev.vespera.client.render.Quality;
 import dev.vespera.client.ui.Anim;
 import net.minecraft.client.MinecraftClient;
 
@@ -150,7 +151,8 @@ public final class JumpCirclesModule extends HudModule {
         float th = thick.get();
         float hl = paint == 2 ? 0.3f : 1f; // у радуги блик слабее, чтобы цвета не гасли
         nvgLineCap(vg, NVG_ROUND);
-        pass(vg, 0.16 * th, false, a * 0.10f, phase, 0.55f * hl);
+        // широкие ореолы — только если качество позволяет (самые дорогие проходы)
+        if (Quality.glow()) pass(vg, 0.16 * th, false, a * 0.10f, phase, 0.55f * hl);
         pass(vg, 0.08 * th, false, a * 0.28f, phase, 0.65f * hl);
         pass(vg, 0.035 * th, false, a * 0.85f, phase, 0.75f * hl);
         pass(vg, 0.012 * th, true, a * 0.95f, phase, 0.85f * hl);
@@ -174,19 +176,32 @@ public final class JumpCirclesModule extends HudModule {
         }
     }
 
-    /** Один проход кольца: толщина с перспективой, яркость с бликом; core — белая сердцевина. */
+    /**
+     * Один проход кольца: толщина с перспективой, яркость с бликом; core — белая сердцевина.
+     * Соседние сегменты склеиваются в один штрих (по {@link Quality#chunk()}): на «Высоком»
+     * это в 2 раза меньше вызовов отрисовки, на «Низком» — в 4, а на глаз разницы почти нет.
+     */
     private void pass(long vg, double widthBlocks, boolean core, float alpha, double phase, float hl) {
         if (alpha <= 0.004f) return;
-        for (int i = 0; i < SEG; i++) {
-            if (!ok[i] || !ok[i + 1]) continue;
-            double ang = 2 * Math.PI * (i + 0.5) / SEG;
+        int step = Quality.chunk();
+        for (int i = 0; i < SEG; i += step) {
+            int end = Math.min(SEG, i + step);
+            if (!ok[i]) continue;
+            int mid = Math.min(SEG - 1, (i + end) / 2);
+            double ang = 2 * Math.PI * (mid + 0.5) / SEG;
             float k = (float) (0.5 + 0.5 * Math.cos(ang - phase));
             float segA = alpha * ((1f - hl) + hl * (0.25f + 0.75f * k * k));
-            float px = Projection.pixelsPerBlock((sd[i] + sd[i + 1]) / 2f);
-            int col = core ? Draw.lerpColor(segColor[i], 0xFFFFFFFF, 0.7f) : segColor[i];
+            float px = Projection.pixelsPerBlock((sd[i] + sd[end]) / 2f);
+            int col = core ? Draw.lerpColor(segColor[mid], 0xFFFFFFFF, 0.7f) : segColor[mid];
             nvgBeginPath(vg);
             nvgMoveTo(vg, sx[i], sy[i]);
-            nvgLineTo(vg, sx[i + 1], sy[i + 1]);
+            int drawn = 0;
+            for (int j = i + 1; j <= end; j++) {
+                if (!ok[j]) break;
+                nvgLineTo(vg, sx[j], sy[j]);
+                drawn++;
+            }
+            if (drawn == 0) continue;
             nvgStrokeWidth(vg, Math.max(1f, (float) widthBlocks * px));
             nvgStrokeColor(vg, Draw.c1(col, segA));
             nvgStroke(vg);
@@ -237,7 +252,7 @@ public final class JumpCirclesModule extends HudModule {
             if (!Projection.project(r[0] + Math.cos(ang) * dist, r[1] + up, r[2] + Math.sin(ang) * dist, tmp)) continue;
             float px = Projection.pixelsPerBlock(tmp[2]);
             float sz = Math.max(1f, (float) (0.035 * (1 - smooth(0.2f, 1f, t) * 0.7)) * px);
-            Draw.circle(vg, tmp[0], tmp[1], sz * 3f, c, a * 0.15f);
+            if (Quality.glow()) Draw.circle(vg, tmp[0], tmp[1], sz * 3f, c, a * 0.15f);
             Draw.circle(vg, tmp[0], tmp[1], sz, Draw.lerpColor(c, 0xFFFFFFFF, 0.6f), a);
         }
     }

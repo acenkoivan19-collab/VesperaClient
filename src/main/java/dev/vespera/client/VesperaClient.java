@@ -15,7 +15,9 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.event.client.player.ClientPlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
@@ -79,6 +81,30 @@ public final class VesperaClient implements ClientModInitializer {
                 dev.vespera.client.module.impl.TargetEspModule.onAttack(entity);
                 dev.vespera.client.module.impl.KillEffectModule.onAttack(entity);
                 dev.vespera.client.module.hud.ComboModule.onAttack();
+                try {
+                    dev.vespera.client.module.impl.HitMarkerModule.onAttack(entity);
+                } catch (Throwable t) {
+                    LOGGER.warn("Hit Marker failed", t);
+                }
+            }
+            return ActionResult.PASS;
+        });
+
+        // Block Effects: осколки при ломании и вспышка при установке (только свой игрок, только клиент)
+        // (ошибка внутри визуала не должна ронять игру — ловим всё)
+        ClientPlayerBlockBreakEvents.AFTER.register((world, player, pos, state) -> {
+            try {
+                dev.vespera.client.module.impl.BlockEffectsModule.onBreak(world, pos, state);
+            } catch (Throwable t) {
+                LOGGER.warn("Block Effects (break) failed", t);
+            }
+        });
+        UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
+            try {
+                if (world.isClient() && player == MinecraftClient.getInstance().player)
+                    dev.vespera.client.module.impl.BlockEffectsModule.onUse(player, hand, hit);
+            } catch (Throwable t) {
+                LOGGER.warn("Block Effects (place) failed", t);
             }
             return ActionResult.PASS;
         });

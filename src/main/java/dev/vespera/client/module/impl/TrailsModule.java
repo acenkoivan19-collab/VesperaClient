@@ -8,6 +8,7 @@ import dev.vespera.client.module.setting.ColorSetting;
 import dev.vespera.client.module.setting.NumberSetting;
 import dev.vespera.client.render.Draw;
 import dev.vespera.client.render.Projection;
+import dev.vespera.client.render.Quality;
 import dev.vespera.client.render.WorldDraw;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.Vec3d;
@@ -57,7 +58,11 @@ public final class TrailsModule extends HudModule {
     /** Минимальное расстояние между точками (блоки). */
     private static final double SPACING = 0.12;
     /** На сколько частей делим каждый участок при сглаживании. */
-    private static final int SUBDIV = 3;
+    /** Сколько промежуточных точек сплайна на отрезок — по качеству (3 / 2 / 1). */
+    private static int subdiv() {
+        float l = Quality.level();
+        return l >= 1.6f ? 3 : l >= 0.7f ? 2 : 1;
+    }
     /** Позиция игрока в этом кадре и с какого расстояния от него начинать шлейф. */
     private double curX, curZ, startDist;
 
@@ -185,7 +190,7 @@ public final class TrailsModule extends HudModule {
             if (f <= 0.01f) continue;
             int c = colorAt(f, now);
             double ya = a[1] + a[4] * 0.5, yb = b[1] + b[4] * 0.5;
-            WorldDraw.beam(vg, a[0], ya, a[2], b[0], yb, b[2], 0.16 * height.get(), c, op * f * 0.25f);
+            if (Quality.glow()) WorldDraw.beam(vg, a[0], ya, a[2], b[0], yb, b[2], 0.16 * height.get(), c, op * f * 0.25f);
             WorldDraw.beam(vg, a[0], ya, a[2], b[0], yb, b[2], 0.045 * height.get(),
                     Draw.lerpColor(c, 0xFFFFFFFF, 0.5f), Math.min(1f, op * f * 1.6f));
         }
@@ -204,7 +209,7 @@ public final class TrailsModule extends HudModule {
             if (f <= 0.01f) continue;
             int c = colorAt(f, now);
             double r = 0.12 + 0.12 * height.get();
-            WorldDraw.disc(vg, b[0], b[1] + 0.03, b[2], r * 2.0, 20, c, op * f * 0.25f);
+            if (Quality.glow()) WorldDraw.disc(vg, b[0], b[1] + 0.03, b[2], r * 2.0, 20, c, op * f * 0.25f);
             WorldDraw.disc(vg, b[0], b[1] + 0.035, b[2], r, 20, Draw.lerpColor(c, 0xFFFFFFFF, 0.35f), op * f);
         }
     }
@@ -268,6 +273,8 @@ public final class TrailsModule extends HudModule {
     private static List<double[]> smoothPath(List<double[]> in) {
         int n = in.size();
         if (n < 3) return in;
+        int SUBDIV = subdiv();
+        if (SUBDIV <= 1) return in;
         List<double[]> out = new ArrayList<>(n * SUBDIV);
         for (int i = 0; i < n - 1; i++) {
             double[] p0 = in.get(Math.max(0, i - 1)), p1 = in.get(i), p2 = in.get(i + 1), p3 = in.get(Math.min(n - 1, i + 2));

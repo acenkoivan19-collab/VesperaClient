@@ -6,7 +6,9 @@ import dev.vespera.client.module.setting.BoolSetting;
 import dev.vespera.client.module.setting.ChoiceSetting;
 import dev.vespera.client.module.setting.NumberSetting;
 import dev.vespera.client.render.Draw;
+import dev.vespera.client.render.Fx;
 import dev.vespera.client.render.Projection;
+import dev.vespera.client.render.Quality;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Vec3d;
@@ -60,6 +62,9 @@ public final class NightSkyModule extends HudModule {
     private int cursor;
     private Vec3d lastCam = Vec3d.ZERO;
     private final float[] a = new float[3], b = new float[3];
+    private final float[] rq = new float[8], bq = new float[8];
+    private final Fx.Dots dots = new Fx.Dots();
+    private final Fx.Lines lines = new Fx.Lines();
 
     public NightSkyModule() {
         super("Night Sky", "Северное сияние и звёздное небо ночью", Category.VISUALS);
@@ -140,7 +145,7 @@ public final class NightSkyModule extends HudModule {
             cursor = 0;
             lastCam = cam;
         }
-        updateVisibility(mc, cam, 140);
+        updateVisibility(mc, cam, Math.round(40 + 40 * Quality.level()));
         smoothVisibility(dt);
 
         double time = System.currentTimeMillis() / 1000.0;
@@ -197,8 +202,10 @@ public final class NightSkyModule extends HudModule {
 
     // ------------------------------------------------------------ звёзды
 
+    /** Звёзды рисуются пакетами (Fx.Dots / Fx.Lines): ~20 вызовов отрисовки вместо 2000+. */
     private void drawStars(long vg, Vec3d cam, double time, float k) {
-        int n = (int) starCount.get();
+        int n = Math.min(MAX_STARS, Math.round(starCount.get() * Math.min(1f, Quality.scale())));
+        boolean glow = Quality.glow();
         for (int s = 0; s < n; s++) {
             if (starVis[s] <= 0.02f) continue;
             double[] st = star[s];
@@ -206,17 +213,15 @@ public final class NightSkyModule extends HudModule {
             float tw = (float) (0.55 + 0.45 * Math.sin(time * (1.3 + st[3] * 2) + s * 1.7));
             float br = (float) (0.25 + 0.75 * st[3]) * tw * Math.min(1f, k) * starVis[s];
             float r = 0.55f + (float) st[3] * 1.9f;
-            if (st[3] > 0.6) { // яркие — с ореолом и лучиками
-                Draw.circle(vg, a[0], a[1], r * 4.5f, 0xFFDCE6FF, br * 0.12f);
-                nvgBeginPath(vg);
-                nvgMoveTo(vg, a[0] - r * 5, a[1]); nvgLineTo(vg, a[0] + r * 5, a[1]);
-                nvgMoveTo(vg, a[0], a[1] - r * 5); nvgLineTo(vg, a[0], a[1] + r * 5);
-                nvgStrokeWidth(vg, 0.8f);
-                nvgStrokeColor(vg, Draw.c1(0xFFFFFFFF, br * 0.35f));
-                nvgStroke(vg);
+            if (st[3] > 0.6 && glow) { // яркие — с ореолом и лучиками
+                dots.add(a[0], a[1], r * 4.5f, 0xFFDCE6FF, br * 0.12f);
+                lines.add(a[0] - r * 5, a[1], a[0] + r * 5, a[1], 0.8f, 0xFFFFFFFF, br * 0.35f);
+                lines.add(a[0], a[1] - r * 5, a[0], a[1] + r * 5, 0.8f, 0xFFFFFFFF, br * 0.35f);
             }
-            Draw.circle(vg, a[0], a[1], r, s % 5 == 0 ? 0xFFCFE0FF : 0xFFFFFFFF, br);
+            dots.add(a[0], a[1], r, s % 5 == 0 ? 0xFFCFE0FF : 0xFFFFFFFF, br);
         }
+        dots.flush(vg);
+        lines.flush(vg);
     }
 
     /** Млечный путь: мягкие фиолетово-синие облачка (радиальный градиент). */
@@ -254,15 +259,18 @@ public final class NightSkyModule extends HudModule {
     }
 
     private void drawAurora(long vg, Vec3d cam, double time, float k) {
+        int step = Math.min(4, Quality.chunk()); // на низком качестве — шире полосы, меньше заливок
+        boolean glow = Quality.glow();
         for (int c = 0; c < CURTAINS; c++) {
             double sway = time * (0.07 + c * 0.02);
-            for (int j = 0; j < COLS - 1; j++) {
-                float vis = Math.min(colVis[c][j], colVis[c][j + 1]);
+            for (int j = 0; j < COLS - 1; j += step) {
+                int j2 = Math.min(COLS - 1, j + step);
+                float vis = Math.min(colVis[c][j], colVis[c][j2]);
                 if (vis <= 0.02f) continue;
-                double u0 = j / (double) (COLS - 1), u1 = (j + 1) / (double) (COLS - 1);
+                double u0 = j / (double) (COLS - 1), u1 = j2 / (double) (COLS - 1);
                 // края занавеса мягко гаснут
                 float edge = (float) Math.min(1, Math.min(u0, 1 - u1) * 6 + 0.05);
-                double[] p0 = point(c, j, sway, time), p1 = point(c, j + 1, sway, time);
+                double[] p0 = point(c, j, sway, time), p1 = point(c, j2, sway, time);
                 // мерцающие «лучи»: яркость полосы меняется по времени
                 float ray = (float) (0.55 + 0.45 * Math.sin(time * 1.7 + j * 0.9 + c * 2.0)
                         * Math.sin(time * 0.6 + j * 0.37));
@@ -274,7 +282,7 @@ public final class NightSkyModule extends HudModule {
                 // верхняя половина: середина → прозрачный верх
                 band(vg, cam, p0, p1, 0.45, 1.0, cl[1], alpha * 0.75f, cl[2], 0f);
                 // вертикальные лучи: тонкие яркие штрихи разной высоты (как на фото)
-                if (j % 2 == 0) rays(vg, cam, p0, p1, rayH[c][j], cl, alpha * 1.3f, time, c * 100 + j);
+                if (glow && j % 2 == 0) rays(vg, cam, p0, p1, rayH[c][j], cl, alpha * 1.3f, time, c * 100 + j);
             }
         }
     }
@@ -287,10 +295,8 @@ public final class NightSkyModule extends HudModule {
             double hi = p0[2] + (p1[2] - p0[2]) * f;
             double flick = 0.6 + 0.4 * Math.sin(time * (2.0 + n * 0.7) + seed * 1.3);
             double top = lo + (hi - lo) * hk * (0.75 + 0.25 * Math.sin(time * 0.8 + seed + n));
-            float[] q = new float[4];
-            float[] tmp2 = new float[8];
-            if (!dir(cam, az, lo, tmp2, 0) || !dir(cam, az, top, tmp2, 2)) continue;
-            q[0] = tmp2[0]; q[1] = tmp2[1]; q[2] = tmp2[2]; q[3] = tmp2[3];
+            float[] q = rq;
+            if (!dir(cam, az, lo, q, 0) || !dir(cam, az, top, q, 2)) continue;
             if (Math.abs(q[1] - q[3]) < 1f) continue;
             nvgLinearGradient(vg, q[0], q[1], q[2], q[3], Draw.c1(Draw.lerpColor(cl[0], 0xFFFFFFFF, 0.25f),
                     (float) (alpha * flick)), Draw.c2(cl[1], 0f), dev.vespera.client.render.WorldDraw.paint());
@@ -317,7 +323,7 @@ public final class NightSkyModule extends HudModule {
                       int cBot, float aBot, int cTop, float aTop) {
         double e00 = p0[1] + (p0[2] - p0[1]) * f0, e01 = p0[1] + (p0[2] - p0[1]) * f1;
         double e10 = p1[1] + (p1[2] - p1[1]) * f0, e11 = p1[1] + (p1[2] - p1[1]) * f1;
-        float[] q = new float[8];
+        float[] q = bq;
         if (!dir(cam, p0[0], e00, q, 0) || !dir(cam, p1[0], e10, q, 2)
                 || !dir(cam, p1[0], e11, q, 4) || !dir(cam, p0[0], e01, q, 6)) return;
         float bx = (q[0] + q[2]) / 2, by = (q[1] + q[3]) / 2, tx = (q[4] + q[6]) / 2, ty = (q[5] + q[7]) / 2;

@@ -96,6 +96,8 @@ public final class NvgRenderer {
                 nvgSave(vg);
                 nvgScale(vg, s, s);
                 Projection.update(mc, winW / s, winH / s); // камера этого кадра для 3D-эффектов
+                Quality.frame(dt);      // авто-качество по FPS
+                Occlusion.newFrame();   // бюджет лучей видимости на кадр
                 if (editor != null) editor.renderBackdrop(vg, winW / s, winH / s);
                 ModuleManager.renderHud(vg, winW / s, winH / s, dt);
                 if (editor != null) editor.renderOverlay(vg, winW / s, winH / s, dt);

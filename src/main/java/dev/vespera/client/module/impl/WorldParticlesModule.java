@@ -6,7 +6,11 @@ import dev.vespera.client.module.setting.ChoiceSetting;
 import dev.vespera.client.module.setting.ColorSetting;
 import dev.vespera.client.module.setting.NumberSetting;
 import dev.vespera.client.render.Draw;
+import dev.vespera.client.render.Fx;
+import dev.vespera.client.render.Occlusion;
 import dev.vespera.client.render.Projection;
+import dev.vespera.client.render.Quality;
+import net.minecraft.world.Heightmap;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.Vec3d;
 
@@ -35,6 +39,10 @@ public final class WorldParticlesModule extends HudModule {
     private boolean init;
     private final Random rnd = new Random();
     private int lastStyle = -1;
+    private final float[] vis = new float[MAX];          // 0..1 — видно ли частицу (плавно)
+    private final Fx.Dots dots = new Fx.Dots();
+    private final Occlusion.Cache sight = new Occlusion.Cache(8);
+    private int pruneTick;
 
     public WorldParticlesModule() {
         super("World Particles", "Снег, светлячки, лепестки вокруг тебя", Category.VISUALS);
@@ -50,6 +58,18 @@ public final class WorldParticlesModule extends HudModule {
     @Override
     protected void onDisable() {
         init = false;
+        sight.clear();
+    }
+
+    /**
+     * Можно ли видеть частицу: снег и лепестки не падают под крышей (карта высот — очень дёшево),
+     * а всё остальное прячется за стенами (луч из камеры, по общему бюджету).
+     */
+    private float visibility(MinecraftClient mc, int i, double[] p, int st, float dt) {
+        if (!Quality.occlusion()) return 1f;
+        int bx = (int) Math.floor(p[0]), by = (int) Math.floor(p[1]), bz = (int) Math.floor(p[2]);
+        if ((st == 0 || st == 2) && by < mc.world.getTopY(Heightmap.Type.MOTION_BLOCKING, bx, bz)) return 0f;
+        return sight.get(i, p[0], p[1], p[2], dt);
     }
 
     private void spawn(double[] p, Vec3d c, boolean anywhere) {
@@ -72,7 +92,8 @@ public final class WorldParticlesModule extends HudModule {
             init = true;
             lastStyle = st;
         }
-        int n = (int) count.get();
+        int n = Math.min(MAX, Quality.count((int) count.get()));
+        if (++pruneTick % 240 == 0) sight.prune();
         float k = Math.min(0.1f, dt);
         double time = System.currentTimeMillis() / 1000.0;
         float[] o = new float[3];
@@ -94,6 +115,7 @@ public final class WorldParticlesModule extends HudModule {
             }
             if (Math.abs(p[0] - c.x) > R || Math.abs(p[2] - c.z) > R || p[1] < c.y - R * 0.6 || p[1] > c.y + R * 0.7) {
                 spawn(p, c, false);
+                vis[i] = 0f; // новая частица проявляется плавно
                 continue;
             }
             if (!Projection.project(p[0], p[1], p[2], o)) continue;
@@ -101,13 +123,18 @@ public final class WorldParticlesModule extends HudModule {
             float d = (float) Math.sqrt((p[0] - c.x) * (p[0] - c.x) + (p[1] - c.y) * (p[1] - c.y) + (p[2] - c.z) * (p[2] - c.z));
             float fade = Math.max(0f, Math.min(1f, (float) (R - d) / 4f)) * Math.min(1f, d / 1.5f); // гаснут у края и у самой камеры
             if (fade <= 0.02f) continue;
+            // видимость меняется плавно — без мигания, когда частица заходит за угол
+            float want = visibility(mc, i, p, st, dt);
+            vis[i] += (want - vis[i]) * Math.min(1f, dt * 8f);
+            fade *= vis[i];
+            if (fade <= 0.02f) continue;
             float s = size.get();
             switch (st) {
                 case 1 -> {
                     float blink = (float) (0.35 + 0.65 * Math.max(0, Math.sin(time * 2.2 * sp + p[3])));
                     float r = Math.max(1f, px * 0.035f * s);
-                    Draw.circle(vg, o[0], o[1], r * 4f, col, 0.14f * blink * fade);
-                    Draw.circle(vg, o[0], o[1], r, Draw.lerpColor(col, 0xFFFFFFFF, 0.5f), blink * fade);
+                    if (Quality.glow()) dots.add(o[0], o[1], r * 4f, col, 0.14f * blink * fade);
+                    dots.add(o[0], o[1], r, Draw.lerpColor(col, 0xFFFFFFFF, 0.5f), blink * fade);
                 }
                 case 2 -> {
                     float r = Math.max(1.2f, px * 0.05f * s);
@@ -124,15 +151,17 @@ public final class WorldParticlesModule extends HudModule {
                 case 3 -> {
                     float tw = (float) (0.3 + 0.7 * Math.abs(Math.sin(time * 1.7 * sp + p[3])));
                     float r = Math.max(0.8f, px * 0.016f * s);
-                    int cc = color.isTheme() ? Draw.hue((float) p[5] * 0.25f + 0.55f) : col;
-                    Draw.circle(vg, o[0], o[1], r * 3f, cc, 0.12f * tw * fade);
-                    Draw.circle(vg, o[0], o[1], r, 0xFFFFFFFF, tw * fade);
+                    // оттенок ступеньками по 1/8 — так точки одного цвета рисуются одной пачкой
+                    int cc = color.isTheme() ? Draw.hue((float) (Math.floor(p[5] * 8) / 8) * 0.25f + 0.55f) : col;
+                    if (Quality.glow()) dots.add(o[0], o[1], r * 3f, cc, 0.12f * tw * fade);
+                    dots.add(o[0], o[1], r, 0xFFFFFFFF, tw * fade);
                 }
                 default -> {
                     float r = Math.max(1f, px * 0.03f * s);
-                    Draw.circle(vg, o[0], o[1], r, col, 0.8f * fade);
+                    dots.add(o[0], o[1], r, col, 0.8f * fade);
                 }
             }
         }
+        dots.flush(vg); // все точки — пачками одного цвета и яркости
     }
 }
