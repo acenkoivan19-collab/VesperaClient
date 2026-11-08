@@ -1,0 +1,33 @@
+name: classpath
+# Служебный: собирает jar'ы для компиляции (Minecraft yarn + Fabric) в ЧЕРНОВИК релиза,
+# чтобы быстро проверять компиляцию вне GitHub. Черновик виден только владельцу репозитория.
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.2.1
+      - run: |
+          cat > /tmp/cp.gradle <<'G'
+          allprojects { afterEvaluate { p -> p.tasks.register('printCp') { doLast { println "CP=" + p.sourceSets.main.compileClasspath.asPath } } } }
+          G
+          gradle -I /tmp/cp.gradle compileJava printCp --no-daemon -x test -q | grep '^CP=' | sed 's/^CP=//' > /tmp/cp.txt
+          mkdir -p /tmp/cpjars
+          tr ':' '\n' < /tmp/cp.txt | while read f; do [ -f "$f" ] && cp "$f" /tmp/cpjars/; done
+          ls /tmp/cpjars | wc -l; du -sh /tmp/cpjars
+          tar -C /tmp -czf /tmp/cpjars.tgz cpjars
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete cp-cache --yes --cleanup-tag 2>/dev/null || true
+          gh release create cp-cache /tmp/cpjars.tgz --draft --title "cp-cache (служебный)" --notes "classpath для проверки компиляции" --target ${{ github.sha }}
