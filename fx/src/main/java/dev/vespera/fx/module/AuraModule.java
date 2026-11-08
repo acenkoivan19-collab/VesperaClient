@@ -1,4 +1,4 @@
-package dev.vespera.client.module.impl;
+package dev.vespera.fx.module;
 
 import dev.vespera.client.module.Category;
 import dev.vespera.client.module.HudModule;
@@ -7,9 +7,9 @@ import dev.vespera.client.module.setting.ChoiceSetting;
 import dev.vespera.client.module.setting.ColorSetting;
 import dev.vespera.client.module.setting.NumberSetting;
 import dev.vespera.client.render.Draw;
-import dev.vespera.client.render.Fx;
+import dev.vespera.fx.render.Fx;
 import dev.vespera.client.render.Projection;
-import dev.vespera.client.render.Quality;
+import dev.vespera.fx.render.Quality;
 import dev.vespera.client.render.WorldDraw;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;

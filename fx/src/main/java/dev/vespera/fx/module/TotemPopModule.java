@@ -1,4 +1,4 @@
-package dev.vespera.client.module.impl;
+package dev.vespera.fx.module;
 
 import dev.vespera.client.module.Category;
 import dev.vespera.client.module.HudModule;
@@ -8,10 +8,10 @@ import dev.vespera.client.module.setting.ChoiceSetting;
 import dev.vespera.client.module.setting.ColorSetting;
 import dev.vespera.client.render.Draw;
 import dev.vespera.client.render.Fonts;
-import dev.vespera.client.render.Fx;
-import dev.vespera.client.render.Occlusion;
+import dev.vespera.fx.render.Fx;
+import dev.vespera.fx.render.Occlusion;
 import dev.vespera.client.render.Projection;
-import dev.vespera.client.render.Quality;
+import dev.vespera.fx.render.Quality;
 import dev.vespera.client.render.WorldDraw;
 import dev.vespera.client.ui.Theme;
 import net.minecraft.client.MinecraftClient;
@@ -57,7 +57,7 @@ public final class TotemPopModule extends HudModule {
     /** Из миксина ClientPlayNetworkHandler.onEntityStatus (главный поток). */
     public static void onStatus(EntityStatusS2CPacket packet) {
         TotemPopModule m = ModuleManager.get(TotemPopModule.class);
-        if (!m.isEnabled() || packet.getStatus() != 35) return;
+        if (m == null || !m.isEnabled() || packet.getStatus() != 35) return;
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.world == null || mc.player == null) return;
         Entity e = packet.getEntity(mc.world);

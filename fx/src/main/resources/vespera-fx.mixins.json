@@ -1,0 +1,13 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "dev.vespera.fx.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "GameRendererFxMixin",
+    "ClientPlayNetworkHandlerFxMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

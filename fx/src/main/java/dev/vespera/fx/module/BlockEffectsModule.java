@@ -1,4 +1,4 @@
-package dev.vespera.client.module.impl;
+package dev.vespera.fx.module;
 
 import dev.vespera.client.module.Category;
 import dev.vespera.client.module.HudModule;
@@ -7,10 +7,10 @@ import dev.vespera.client.module.setting.BoolSetting;
 import dev.vespera.client.module.setting.ChoiceSetting;
 import dev.vespera.client.module.setting.ColorSetting;
 import dev.vespera.client.render.Draw;
-import dev.vespera.client.render.Fx;
-import dev.vespera.client.render.Occlusion;
+import dev.vespera.fx.render.Fx;
+import dev.vespera.fx.render.Occlusion;
 import dev.vespera.client.render.Projection;
-import dev.vespera.client.render.Quality;
+import dev.vespera.fx.render.Quality;
 import dev.vespera.client.render.WorldDraw;
 import dev.vespera.client.ui.Theme;
 import net.minecraft.block.BlockState;
@@ -65,7 +65,7 @@ public final class BlockEffectsModule extends HudModule {
     /** ClientPlayerBlockBreakEvents.AFTER — локальный игрок сломал блок. */
     public static void onBreak(ClientWorld world, BlockPos pos, BlockState state) {
         BlockEffectsModule m = ModuleManager.get(BlockEffectsModule.class);
-        if (!m.isEnabled() || !m.onBreak.on()) return;
+        if (m == null || !m.isEnabled() || !m.onBreak.on()) return;
         if (!Occlusion.clear(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)) return;
         int c = state.getMapColor(world, pos).color;
         m.add(BREAK, pos.getX(), pos.getY(), pos.getZ(), c == 0 ? 0xFF9A9AA4 : (c | 0xFF000000), 0);
@@ -74,7 +74,7 @@ public final class BlockEffectsModule extends HudModule {
     /** UseBlockCallback — игрок кликнул ПКМ по блоку с блоком в руке: ждём, появится ли он. */
     public static void onUse(PlayerEntity player, Hand hand, BlockHitResult hit) {
         BlockEffectsModule m = ModuleManager.get(BlockEffectsModule.class);
-        if (!m.isEnabled() || !m.onPlace.on()) return;
+        if (m == null || !m.isEnabled() || !m.onPlace.on()) return;
         if (!(player.getStackInHand(hand).getItem() instanceof BlockItem)) return;
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.world == null) return;
@@ -86,7 +86,7 @@ public final class BlockEffectsModule extends HudModule {
     /** Взрыв (пакет сервера). */
     public static void onExplosion(Vec3d center, float radius) {
         BlockEffectsModule m = ModuleManager.get(BlockEffectsModule.class);
-        if (!m.isEnabled() || !m.onBoom.on()) return;
+        if (m == null || !m.isEnabled() || !m.onBoom.on()) return;
         if (Projection.distanceTo(center.x, center.y, center.z) > 64) return;
         if (!Occlusion.clear(center.x, center.y + 0.5, center.z)) return;
         m.add(BOOM, center.x, center.y, center.z, 0xFFFFB347, Math.max(1.5, radius));

@@ -1,0 +1,45 @@
+// Vespera FX — дополнение к Vespera Client (отдельный мод «vespera_fx»).
+// Собирается ПОСЛЕ основного клиента: компилируется против его классов (build/devlibs/*-dev.jar),
+// но в свой jar кладёт только свои классы — API модулей берёт у установленного клиента.
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = 'vespera-fx'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // NanoVG и API клиента — есть у установленного Vespera Client, в наш jar не кладём
+    compileOnly "org.lwjgl:lwjgl-nanovg:${project.lwjgl_version}"
+    compileOnly fileTree(dir: "../build/devlibs", include: "*-dev.jar")
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+    it.options.encoding = "UTF-8"
+}

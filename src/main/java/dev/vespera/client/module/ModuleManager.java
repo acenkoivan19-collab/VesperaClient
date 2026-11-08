@@ -55,13 +55,6 @@ public final class ModuleManager {
         register(new WorldParticlesModule());
         register(new NightSkyModule());
         register(new RenderQualityModule());
-        register(new AuraModule());
-        register(new ItemGlowModule());
-        register(new ProjectileTrailsModule());
-        register(new BlockEffectsModule());
-        register(new ScreenEffectsModule());
-        register(new TotemPopModule());
-        register(new HitMarkerModule());
         register(new BlockOverlayModule());
         register(new HandViewModule());
         register(new ItemPhysicsModule());

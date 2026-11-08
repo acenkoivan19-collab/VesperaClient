@@ -19,8 +19,11 @@ jobs:
           # та же версия, что собирает локально build.bat (Loom 1.13.4 на ней проверен)
           gradle-version: 9.2.1
       - run: gradle build --no-daemon -x test -Pbuild_sha=${{ github.sha }} -Pmod_version=1.1.${{ github.run_number }}
+      # Vespera FX — дополнение (новые визуалы), работает поверх любого Vespera Client
+      - run: gradle -p fx build --no-daemon -x test -Pmod_version=1.0.${{ github.run_number }}
       - run: |
           cp $(ls build/libs/vespera-client-*.jar | grep -v -- '-sources') ./vespera-client.jar
+          cp $(ls fx/build/libs/vespera-fx-*.jar | grep -v -- '-sources') ./vespera-fx.jar
           echo -n "${{ github.sha }}" > build.txt
       - uses: softprops/action-gh-release@v2
         with:
@@ -30,4 +33,5 @@ jobs:
           make_latest: false
           files: |
             vespera-client.jar
+            vespera-fx.jar
             build.txt

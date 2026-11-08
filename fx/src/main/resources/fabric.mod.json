@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "vespera_fx",
+  "version": "${version}",
+  "name": "Vespera FX",
+  "description": "Дополнение к Vespera Client: аура, свечение предметов, следы снарядов, эффекты блоков и экрана, Totem Pop, Hit Marker, авто-качество визуалов",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.vespera.fx.VesperaFx"
+    ]
+  },
+  "mixins": [
+    "vespera-fx.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.17.0",
+    "minecraft": "~1.21.11",
+    "fabric-api": "*",
+    "vespera": "*",
+    "java": ">=21"
+  }
+}
